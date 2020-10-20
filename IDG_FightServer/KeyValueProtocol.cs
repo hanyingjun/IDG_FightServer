@@ -49,7 +49,6 @@ namespace IDG
             }
             set
             {
-
                 if (keyValuePairs.ContainsKey(key))
                 {
                     keyValuePairs[key] = Encode(value);
@@ -58,17 +57,15 @@ namespace IDG
                 {
                     keyValuePairs.Add(key, Encode(value));
                 }
-
-
             }
         }
+
         public KeyValueProtocol()
         {
-
         }
+
         public KeyValueProtocol(string initInfo)
         {
-
             var kvs = initInfo.Split(new char[] { ',' });
 
             keyValuePairs.Clear();

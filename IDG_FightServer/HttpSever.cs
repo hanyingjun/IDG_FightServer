@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using LiteDB;
+using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text;
-using LiteDB;
 namespace IDG
 {
     public class HttpServer
@@ -41,7 +39,6 @@ namespace IDG
             {
                 receiveInfo = request.RawUrl.Remove(0,1);
             }
-            
 
             var response = context.Response;
             response.StatusCode = 200;
@@ -58,39 +55,33 @@ namespace IDG
                 writer.Close();
                 response.Close();
             }
-           
         }
-        
     }
+
     public class DataHttpServer
     {
         HttpServer http;
-        string dbName;
+
         public DataHttpServer()
         {
             http = new HttpServer();
             http.InfoParse = InfoParse;
         }
-        public virtual void Start(string ipPort, string dbName)
+
+        public virtual void Start(string ipPort)
         {
-            this.dbName = dbName;
             http.Listen(ipPort);
         }
+
         private string InfoParse(string receive)
         {
             return ParseReceive(new KeyValueProtocol(receive)).GetString();
         }
+
         public virtual KeyValueProtocol ParseReceive(KeyValueProtocol protocol)
         {
             protocol["time"] = DateTime.Now.ToString();
             return protocol;
-        }
-        public void Data(Action<LiteDatabase> action)
-        {
-            using (var db = new LiteDatabase(dbName))
-            {
-                action(db);
-            }
         }
     }
 }

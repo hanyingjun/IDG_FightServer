@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Net.Sockets;
 using System.Net;
+using System.Net.Sockets;
 using System.Timers;
-using Newtonsoft.Json;
 namespace IDG.FightServer
 {
     public class PlayerInfo
@@ -16,19 +13,23 @@ namespace IDG.FightServer
         public Character character { get; set; }
 
     }
+
     public class Character
     {
         public int Id { get; set; }
         public string info { get; set; }
     }
+
     public class FightRoom
     {
-     
         public int Id { get; set; }
         public string url { get; set; }
         public string ip { get; set; }
         public string port { get; set; }
+        public string isFull { get; set; }
+
         public List<PlayerInfo> playerInfos { get; set; }
+
         public bool InRoom(string userName)
         {
             foreach (var pi in playerInfos)
@@ -40,6 +41,7 @@ namespace IDG.FightServer
             }
             return false;
         }
+
         public bool CheckAllReady()
         {
             foreach (var player in playerInfos)
@@ -51,10 +53,33 @@ namespace IDG.FightServer
             }
             return true;
         }
+
+        public void AddPlayer(PlayerInfo player)
+        {
+            if(playerInfos == null)
+            {
+                playerInfos = new List<PlayerInfo>();
+            }
+            playerInfos.Add(player);
+        }
     }
+
     public class FightServer
     {
-        public FightRoom fightRoom;
+        private FightRoom _fightRoom = null;
+
+        public FightRoom fightRoom
+        {
+            get
+            {
+                return _fightRoom;
+            }
+            set
+            {
+                _fightRoom = value;
+            }
+        }
+
         public IndexObjectPool<Connection> ClientPool
         {
             get
@@ -90,13 +115,13 @@ namespace IDG.FightServer
         {
             get
             {
-                lock(_stepMessage)
+                lock (_stepMessage)
                 {
                     return _stepMessage;
                 }
-                
             }
-            set {
+            set
+            {
                 lock (_stepMessage)
                 {
                     _stepMessage = value;
@@ -104,23 +129,21 @@ namespace IDG.FightServer
             }
         }
         protected List<byte[]> _frameList;
-       
+
         private IndexObjectPool<Connection> _clientPool;
         public string port;
         public string ip;
         public Socket _serverListener;
         public Timer timer;
-        //private int framSize;
         public Byte[][] _stepMessage;
 
-       // public byte keyInfo;
         public FightServer()
         {
-            
         }
-        public void StartServer(string host,int port,int maxServerCount)
+
+        public void StartServer(string host, int port, int maxServerCount)
         {
-            this.port =port.ToString();
+            this.port = port.ToString();
             this.ip = host;
             _serverListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _clientPool = new IndexObjectPool<Connection>(maxServerCount);
@@ -134,58 +157,48 @@ namespace IDG.FightServer
             Listener.Listen(maxServerCount);
             Listener.BeginAccept(AcceptCallBack, Listener);
             _stepMessage = new byte[maxServerCount][];
-           // framSize = 0;
-            //for (int i = 0; i < _stepMessage.Length; i++)
-            //{
-            //    _stepMessage[i] = new byte[framSize];
-            //}
-            //ClientPool.Clear();
 
-            ServerLog.LogServer("服务器启动成功",0);
+            ServerLog.LogServer("服务器启动成功", 0);
         }
+
         protected void AcceptCallBack(IAsyncResult ar)
         {
-            
-                
-             Socket client = Listener.EndAccept(ar);
-            int index= ClientPool.Get();  
-            if (index >=0)
+            Socket client = Listener.EndAccept(ar);
+            int index = ClientPool.Get();
+            if (index >= 0)
             {
                 ClientPool[index].SetActive();
                 Connection con = ClientPool[index];
                 con.clientId = index;
                 StepMessage = new byte[ClientPool.Count][];
-                //for (int i = 0; i < StepMessage.Length; i++)
-                //{
-                //    StepMessage[i] = new byte[framSize];
-                //}
                 con.socket = client;
                 SendIninInfo((byte)con.clientId);
-                if(FrameList.Count>0)SendToClientAllFrame(index);
+                if (FrameList.Count > 0)
+                    SendToClientAllFrame(index);
                 con.socket.BeginReceive(con.readBuff, 0, Connection.buffer_size, SocketFlags.None, ReceiveCallBack, con);
             }
             else
             {
-                ServerLog.LogServer("服务器人数达到上限",0);
+                ServerLog.LogServer("服务器人数达到上限", 0);
             }
             Listener.BeginAccept(AcceptCallBack, Listener);
         }
-       
+
         protected void ReceiveCallBack(IAsyncResult ar)
         {
-            
             Connection con = (Connection)ar.AsyncState;
-            if (!con.ActiveCheck()) return;
+            if (!con.ActiveCheck())
+                return;
             try
             {
                 lock (con)
                 {
                     int length = con.socket.EndReceive(ar);
-                    ServerLog.LogClient("receive:" + length,1,con.clientId);
+                    ServerLog.LogClient("receive:" + length, 1, con.clientId);
                     if (length <= 0)
                     {
                         ServerLog.LogClient("客户端断开连接：" + ClientPool[con.clientId].socket.LocalEndPoint + "ClientID:" + con.clientId, 0, con.clientId);
- 
+
                         con.socket.Close();
                         ClientPool.Recover(con.clientId);
 
@@ -195,7 +208,7 @@ namespace IDG.FightServer
                     //Console.WriteLine("bool isNew = bufferList[con]：" + ClientPool[con.clientId].socket.LocalEndPoint + "ClientID:" + con.clientId);
                     //bool isNew = bufferList[con] == null;
                     ProcessData(con);
-                   
+
                     //{
                     //    //MessageList.Push(message);
 
@@ -207,15 +220,13 @@ namespace IDG.FightServer
                     ////}
                     //Console.WriteLine("接收信息：" + message.Length + "ClientID:" + con.clientId);
 
-
-
                     con.socket.BeginReceive(con.readBuff, con.length, con.BuffRemain, SocketFlags.None, ReceiveCallBack, con);
                 }
             }
             catch (Exception)
             {
                 ServerLog.LogClient("客户端异常终止连接：" + ClientPool[con.clientId].socket.LocalEndPoint + "ClientID:" + con.clientId, 0, con.clientId);
- 
+
                 con.socket.Close();
                 ClientPool.Recover(con.clientId);
                 //throw;
@@ -223,10 +234,9 @@ namespace IDG.FightServer
         }
         private void ProcessData(Connection connection)
         {
-
             if (connection.length < sizeof(Int32))
             {
-               // Debug.Log("获取不到信息大小重新接包解析：" + connection.length.ToString());
+                // Debug.Log("获取不到信息大小重新接包解析：" + connection.length.ToString());
                 return;
             }
             Array.Copy(connection.readBuff, connection.lenBytes, sizeof(Int32));
@@ -254,11 +264,11 @@ namespace IDG.FightServer
         }
         protected void ParseMessage(Connection con, ProtocolBase protocol)
         {
-
             switch ((MessageType)protocol.getByte())
             {
                 case MessageType.Frame:
-                    byte t1 = protocol.getByte(); byte[] t2 = protocol.getLastBytes();
+                    byte t1 = protocol.getByte();
+                    byte[] t2 = protocol.getLastBytes();
                     //if (framSize != t2.Length) { framSize = t2.Length;
                     //    for (int i = 0; i < StepMessage.Length; i++)
                     //    {
@@ -283,7 +293,7 @@ namespace IDG.FightServer
                 //ParseMessage(con,protocol);
             }
         }
-        protected void SendToClient(int clientId,byte[] bytes)
+        protected void SendToClient(int clientId, byte[] bytes)
         {
             //int sendLength = bytes.Length;
             //int index=0;
@@ -295,8 +305,6 @@ namespace IDG.FightServer
             ServerLog.LogClient("send:" + temp.Length, 2, clientId);
             ClientPool[clientId].socket.BeginSend(temp, 0, temp.Length, SocketFlags.None, null, null);
             //Console.WriteLine(DateTime.Now.ToLongTimeString() + "clientId：" + clientId + " mesagge " + bytes[0]+" length "+bytes.Length);
-            
-           
         }
 
         protected void SendIninInfo(byte clientId)
@@ -307,38 +315,36 @@ namespace IDG.FightServer
             protocol.push((byte)MessageType.end);
             SendToClient(clientId, protocol.GetByteStream());
             ServerLog.LogClient("客户端连接成功：" + ClientPool[clientId].socket.LocalEndPoint + "ClientID:" + clientId, 0, clientId);
-      
         }
         protected void SendToClientAllFrame(int clientId)
         {
-           
-            byte[][] list= FrameList.ToArray();
-            ServerLog.LogClient("中途加入 发送历史帧："+ list.Length, 3, clientId);
+
+            byte[][] list = FrameList.ToArray();
+            ServerLog.LogClient("中途加入 发送历史帧：" + list.Length, 3, clientId);
             foreach (var item in list)
             {
                 SendToClient(clientId, item);
             }
-            
+
         }
         protected void SendStepAll(object sender, ElapsedEventArgs e)
         {
-          
             if (ClientPool.ActiveCount <= 0)
             {
                 if (FrameList.Count > 0)
                 {
-                    ServerLog.LogServer("所有客户端退出游戏 战斗结束！！！", 1); 
+                    ServerLog.LogServer("所有客户端退出游戏 战斗结束！！！", 1);
                     FrameList.Clear();
                 }
                 return;
             }
-           
+
             if (FrameList.Count == 0)
             {
-                ServerLog.LogServer("玩家进入服务器 战斗开始！！！",1);
+                ServerLog.LogServer("玩家进入服务器 战斗开始！！！", 1);
             }
             ServerLog.LogServer("0[" + FrameList.Count + "]", 1);
-            
+
             byte[][] temp = StepMessage;
             int length = temp.Length;
             ProtocolBase protocol = new ByteProtocol();
@@ -357,39 +363,39 @@ namespace IDG.FightServer
                 protocol.push(rand.Next(10000));
             }
             protocol.push((byte)MessageType.end);
-            ServerLog.LogServer("生成帧信息[" + length+ "]", 1);
+            ServerLog.LogServer("生成帧信息[" + length + "]", 1);
             byte[] temp2 = protocol.GetByteStream();
 
             FrameList.Add(temp2);
-          
-            ClientPool.Foreach((con) => { SendToClient(con.clientId, temp2);
+
+            ClientPool.Foreach((con) =>
+            {
+                SendToClient(con.clientId, temp2);
                 if (!con.ActiveCheck())
                 {
                     ServerLog.LogClient("客户端断线 中止连接：" + ClientPool[con.clientId].socket.LocalEndPoint + "ClientID:" + con.clientId, 0, con.clientId);
-    
+
                     con.socket.Close();
                     ClientPool.Recover(con.clientId);
                 }
 
             });
-           
-            ServerLog.LogServer("帧同步["+ FrameList.Count+"]",2);
+
+            ServerLog.LogServer("帧同步[" + FrameList.Count + "]", 2);
             //StepMessage = new byte[ClientPool.Count][];
             //for (int i = 0; i < StepMessage.Length; i++)
             //{
             //    StepMessage[i] = new byte[framSize];
             //}
-
-
         }
-        
+
     }
     public enum MessageType : byte
     {
-        Init =11,
+        Init = 11,
         Frame = 12,
-        ClientReady=13,
-        RandomSeed=14,
-        end=200,
+        ClientReady = 13,
+        RandomSeed = 14,
+        end = 200,
     }
 }

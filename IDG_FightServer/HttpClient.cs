@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 
 namespace IDG
 {
-
-
     public static class HttpClient
     {
         /// <summary>

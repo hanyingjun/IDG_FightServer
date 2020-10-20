@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace IDG
 {
     public class IndexObjectPool<T> where T : new()
     {
-
         protected List<T> _objList;
         protected List<bool> _usedList;
         protected int _activeCount;
@@ -81,6 +78,5 @@ namespace IDG
                 }
             }
         }
-
     }
 }
