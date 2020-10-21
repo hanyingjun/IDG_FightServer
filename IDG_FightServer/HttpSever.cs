@@ -1,8 +1,8 @@
-﻿using LiteDB;
-using System;
+﻿using System;
 using System.IO;
 using System.Net;
 using System.Text;
+
 namespace IDG
 {
     public class HttpServer
@@ -10,10 +10,12 @@ namespace IDG
         HttpListener listener;
       //  string ip;
         public Func<string, string> InfoParse;
+
         public HttpServer()
         {
             listener = new HttpListener();
         }
+
         public void Listen(string ipPort)
         {
             listener.Prefixes.Add("http://"+ ipPort + "/");
@@ -21,6 +23,7 @@ namespace IDG
             listener.BeginGetContext(AsyncContext, listener);
             Console.WriteLine("Http服务启动成功");
         }
+
         public void AsyncContext(IAsyncResult ar)
         {
             var listener = ar.AsyncState as HttpListener;

@@ -26,6 +26,7 @@ namespace IDG
 
             return strb.ToString();
         }
+
         static string Decode(string value)
         {
             StringBuilder strb = new StringBuilder(value);
@@ -34,6 +35,7 @@ namespace IDG
             strb.Replace("@v-", ":");
             return strb.ToString();
         }
+
         public string this[string key]
         {
             get
@@ -76,6 +78,7 @@ namespace IDG
                 keyValuePairs.Add(str[0], str[1]);
             }
         }
+
         public string GetString()
         {
             StringBuilder strb = new StringBuilder();
@@ -89,6 +92,7 @@ namespace IDG
             }
             return strb.ToString();
         }
+
         public void Clear()
         {
             keyValuePairs.Clear();

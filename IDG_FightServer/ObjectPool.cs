@@ -32,6 +32,7 @@ namespace IDG
             }
             return -1;
         }
+
         public int Count
         {
             get
@@ -39,6 +40,7 @@ namespace IDG
                 return _objList.Count;
             }
         }
+
         public int ActiveCount
         {
             get
@@ -46,6 +48,7 @@ namespace IDG
                 return _activeCount;
             }
         }
+
         public void Recover(int index)
         {
             _usedList[index] = false;
@@ -62,12 +65,11 @@ namespace IDG
                 }
                 else
                 {
-                    //Console.WriteLine("被回收的池对象" + _objList[index]);
-                    //throw new Exception("被回收的池对象" + _objList[index]);
                     return _objList[index];
                 }
             }
         }
+
         public void Foreach(Action<T> action)
         {
             for (int i = 0; i < Count; i++)

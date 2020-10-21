@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace IDG
@@ -14,25 +13,19 @@ namespace IDG
         public abstract void push(Int64 int64);
         public abstract void push(UInt16 uint16);
         public abstract void push(Byte uint8);
-
         public abstract void push(Boolean boolean);
-
-        //public abstract void push(V2 v2);
         public abstract void push(String str);
         public abstract void push(Byte[] bytes);
-        //public abstract bool InitNext(byte[] bytes);
-
 
         public abstract Int32 getInt32();
         public abstract Int64 getInt64();
         public abstract UInt16 getUInt16();
         public abstract Byte getByte();
         public abstract Boolean getBoolean();
-  
-        //public abstract V2 getV2();
         public abstract String getString();
         public abstract Byte[] getLastBytes();
     }
+
     public class ByteProtocol : ProtocolBase
     {
         protected List<Byte> byteList = new List<byte>();
@@ -41,14 +34,17 @@ namespace IDG
         protected int lastOffset = 0;
         protected UInt16 strLength = 0;
         protected byte[] tempBytes;
-        public override int Length { get { return bytes.Length - (index + lastOffset); } }
+
+        public override int Length
+        {
+            get
+            {
+                return bytes.Length - (index + lastOffset);
+            }
+        }
+
         public override byte[] GetByteStream()
         {
-            //  push(byteList.Count);
-
-            // bytes = byteList.ToArray();
-            // bytes = byteList.ToArray();
-
             return byteList.ToArray();
         }
 
@@ -66,7 +62,7 @@ namespace IDG
             return BitConverter.ToInt64(bytes, index);
         }
 
-    
+
         public override string getString()
         {
             strLength = getUInt16();
@@ -139,22 +135,10 @@ namespace IDG
             byteList.AddRange(tempBytes);
         }
 
-     
-        //public override void push(V2 v2)
-        //{
-        //    push(v2.x.ToPrecisionInt());
-        //    push(v2.y.ToPrecisionInt());
-        //}
-
-        //public override V2 getV2()
-        //{
-        //    Ratio r1 = getRatio(), r2 = getRatio();
-        //    return new V2(r1, r2);
-        //}
-
         public override void push(byte[] bytes)
         {
-            if (bytes==null|| bytes.Length == 0) return;
+            if (bytes == null || bytes.Length == 0)
+                return;
             byteList.AddRange(bytes);
         }
 

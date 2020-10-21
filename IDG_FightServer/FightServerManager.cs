@@ -62,14 +62,6 @@ namespace IDG.FightServer
             string cmd = receive["cmd"];
             switch (cmd)
             {
-                //case "startGame":
-                //    var server = GetServer();
-                //    server.fightRoom = JsonConvert.DeserializeObject<FightRoom>(receive["fightRoom"]);
-                //    send["ip"] = server.ip;
-                //    send["port"] = server.port;
-
-                //    send["status"] = "成功";
-                //    break;
                 case "register":
                     string username = receive["username"];
                     string pwd = receive["password"];
@@ -249,7 +241,7 @@ namespace IDG.FightServer
                     pi.username = username;
                     pi.character = clothes[username];
                     server.fightRoom.AddPlayer(pi);
-                    if (server.fightRoom.playerInfos.Count == 2)
+                    if (server.fightRoom.playerInfos.Count == 1)
                     {
                         server.fightRoom.isFull = "true";
                     }
