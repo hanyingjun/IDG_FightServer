@@ -36,11 +36,32 @@ namespace IDG.FightServer
             }
             else
             {
-                server = new FightServer();
-                server.StartServer(ip, port++, 10);
+                server = new FightServer(ip, port++, 6);
+                //server.StartServer();
                 waitServers.Add(server);
             }
             return server;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private void ClentConnectCallback()
+        {
+        }
+
+        /// <summary>
+        /// 客户端断开连接回调
+        /// </summary>
+        private void ClientDisConnectCallback()
+        {
+        }
+
+        /// <summary>
+        /// 战斗服关闭回调
+        /// </summary>
+        private void BattleServerCloseCallback()
+        {
         }
 
         public FightServer GetServerByUserName(string username)
@@ -233,8 +254,8 @@ namespace IDG.FightServer
                     if (server.fightRoom == null)
                     {
                         server.fightRoom = new FightRoom();
-                        server.fightRoom.ip = server.ip;
-                        server.fightRoom.port = server.port;
+                        server.fightRoom.ip = server.IP;
+                        server.fightRoom.port = server.Port.ToString();
                     }
                     PlayerInfo pi = new PlayerInfo();
                     pi.isReady = false;

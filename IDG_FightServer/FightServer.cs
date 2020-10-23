@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Timers;
+
 namespace IDG.FightServer
 {
     public class PlayerInfo
@@ -66,7 +67,6 @@ namespace IDG.FightServer
     public class FightServer
     {
         private FightRoom _fightRoom = null;
-
         public FightRoom fightRoom
         {
             get
@@ -110,8 +110,40 @@ namespace IDG.FightServer
                     return _frameList;
                 }
             }
+            set
+            {
+                lock(_frameList)
+                {
+                    _frameList = value;
+                }
+            }
         }
 
+        protected List<byte[]> _frameList;
+
+        private IndexObjectPool<Connection> _clientPool;
+        private int m_nPort = 0;
+        public int Port
+        {
+            get { return m_nPort; }
+            private set { m_nPort = value; }
+        }
+        private string m_sIP = null;
+        public string IP
+        {
+            get { return m_sIP; }
+            private set { m_sIP = value; }
+        }
+        /// <summary>
+        /// 最大连接数
+        /// </summary>
+        private int _maxConnectNum = 0;
+        public Socket _serverListener;
+        public Timer timer;
+        private Byte[][] _stepMessage = null;
+        /// <summary>
+        /// 所有玩家的帧数据
+        /// </summary>
         public Byte[][] StepMessage
         {
             get
@@ -129,38 +161,63 @@ namespace IDG.FightServer
                 }
             }
         }
+        /// <summary>
+        /// 持续时间
+        /// </summary>
+        private int _durationTime = 0;
+        private bool _battleEnd = false;
 
-        protected List<byte[]> _frameList;
-
-        private IndexObjectPool<Connection> _clientPool;
-        public string port;
-        public string ip;
-        public Socket _serverListener;
-        public Timer timer;
-        public Byte[][] _stepMessage;
-
-        public FightServer()
+        public FightServer(string host, int port, int maxServerCount)
         {
+            this.IP = host;
+            this.Port = port;
+            this._maxConnectNum = maxServerCount;
+            _clientPool = new IndexObjectPool<Connection>(this._maxConnectNum);
         }
 
-        public void StartServer(string host, int port, int maxServerCount)
+        public void StartServer()
         {
-            this.port = port.ToString();
-            this.ip = host;
             _serverListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            _clientPool = new IndexObjectPool<Connection>(maxServerCount);
-            _frameList = new List<byte[]>();
             Listener.NoDelay = true;
             timer = new Timer(100);
             timer.AutoReset = true;
             timer.Elapsed += SendStepAll;
             timer.Enabled = true;
-            Listener.Bind(new IPEndPoint(IPAddress.Parse(host), port));
-            Listener.Listen(maxServerCount);
+            Listener.Bind(new IPEndPoint(IPAddress.Parse(this.IP), this.Port));
+            Listener.Listen(this._maxConnectNum);
             Listener.BeginAccept(AcceptCallBack, Listener);
-            _stepMessage = new byte[maxServerCount][];
+            _frameList = new List<byte[]>();
+            _stepMessage = new byte[this._maxConnectNum][];
 
             ServerLog.LogServer("服务器启动成功", 0);
+        }
+
+        /// <summary>
+        /// 当所有客户端都推出的时候，关闭服务器监听
+        /// </summary>
+        public void StopServer()
+        {
+            try
+            {
+                Listener.Shutdown(SocketShutdown.Both);
+            }
+            catch (Exception) { }
+            try
+            {
+                Listener.Disconnect(false);
+            }
+            catch (Exception) { }
+            try
+            {
+                Listener.Close();
+            }
+            catch (Exception) { }
+
+            _serverListener = null;
+            timer.Stop();
+            timer = null;
+            FrameList = null;
+            StepMessage = null;
         }
 
         protected void AcceptCallBack(IAsyncResult ar)
@@ -219,7 +276,6 @@ namespace IDG.FightServer
 
                 con.socket.Close();
                 ClientPool.Recover(con.clientId);
-                //throw;
             }
         }
 
@@ -253,6 +309,11 @@ namespace IDG.FightServer
 
         protected void ParseMessage(Connection con, ProtocolBase protocol)
         {
+            if (_battleEnd == true)
+            {
+                return;
+            }
+
             MessageType messageType = (MessageType)protocol.getByte();
             switch (messageType)
             {
@@ -264,6 +325,10 @@ namespace IDG.FightServer
                     ServerLog.LogClient("Key:[" + t2.Length + "]", 3, clientId);
                     break;
                 case MessageType.ClientReady:
+                    break;
+                case MessageType.Ping:
+                    byte id = protocol.getByte();
+                    SendPingToClient(id);
                     break;
                 default:
                     Console.WriteLine("not handle messagetype " + messageType);
@@ -283,7 +348,14 @@ namespace IDG.FightServer
             Array.Copy(length, send, 4);
             Array.Copy(bytes, 0, send, 4, bytes.Length);
             ServerLog.LogClient("send:" + send.Length, 2, clientId);
-            ClientPool[clientId].socket.BeginSend(send, 0, send.Length, SocketFlags.None, null, null);
+            try
+            {
+                ClientPool[clientId].socket.BeginSend(send, 0, send.Length, SocketFlags.None, null, null);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
         }
 
         protected void SendIninInfo(byte clientId)
@@ -294,6 +366,14 @@ namespace IDG.FightServer
             protocol.push((byte)MessageType.end);
             this.SendToClient(clientId, protocol.GetByteStream());
             ServerLog.LogClient("客户端连接成功：" + ClientPool[clientId].socket.LocalEndPoint + "ClientID:" + clientId, 0, clientId);
+        }
+
+        protected void SendPingToClient(byte clientId)
+        {
+            ProtocolBase protocol = new ByteProtocol();
+            protocol.push((byte)MessageType.Ping);
+            protocol.push((byte)MessageType.end);
+            this.SendToClient(clientId, protocol.GetByteStream());
         }
 
         protected void SendToClientAllFrame(int clientId)
@@ -308,6 +388,12 @@ namespace IDG.FightServer
 
         protected void SendStepAll(object sender, ElapsedEventArgs e)
         {
+            _durationTime += 100;
+            if (_durationTime >= 20000)
+            {
+                //_battleEnd = true;
+            }
+
             if (ClientPool.ActiveCount <= 0)
             {
                 if (FrameList.Count > 0)
@@ -322,6 +408,7 @@ namespace IDG.FightServer
             {
                 ServerLog.LogServer("玩家进入服务器 战斗开始！！！", 1);
             }
+
             ServerLog.LogServer("0[" + FrameList.Count + "]", 1);
 
             byte[][] temp = StepMessage;
@@ -343,6 +430,11 @@ namespace IDG.FightServer
                 protocol.push(rand.Next(10000));
             }
 
+            if (_battleEnd == true)
+            {
+                protocol.push((byte)MessageType.BattleEnd);
+            }
+
             protocol.push((byte)MessageType.end);
             ServerLog.LogServer("生成帧信息[" + length + "]", 1);
             byte[] temp2 = protocol.GetByteStream();
@@ -360,6 +452,15 @@ namespace IDG.FightServer
                 }
             });
 
+            if (_battleEnd == true)
+            {
+                ClientPool.Foreach((con) =>
+                {
+                    con.socket.Close();
+                    ClientPool.Recover(con.clientId);
+                });
+            }
+
             ServerLog.LogServer("帧同步[" + FrameList.Count + "]", 2);
         }
     }
@@ -370,6 +471,8 @@ namespace IDG.FightServer
         Frame = 12,
         ClientReady = 13,
         RandomSeed = 14,
+        BattleEnd = 15,
+        Ping = 16,
         end = 200,
     }
 }

@@ -8,7 +8,7 @@ namespace IDG
     public class HttpServer
     {
         HttpListener listener;
-      //  string ip;
+        //  string ip;
         public Func<string, string> InfoParse;
 
         public HttpServer()
@@ -18,7 +18,8 @@ namespace IDG
 
         public void Listen(string ipPort)
         {
-            listener.Prefixes.Add("http://"+ ipPort + "/");
+            //listener.Prefixes.Add("http://"+ ipPort + "/");
+            listener.Prefixes.Add("http://+:44444/");
             listener.Start();
             listener.BeginGetContext(AsyncContext, listener);
             Console.WriteLine("Http服务启动成功");
@@ -27,7 +28,7 @@ namespace IDG
         public void AsyncContext(IAsyncResult ar)
         {
             var listener = ar.AsyncState as HttpListener;
-         
+
             listener.BeginGetContext(AsyncContext, listener);
             var context = listener.EndGetContext(ar);
             var request = context.Request;
@@ -38,9 +39,9 @@ namespace IDG
                 StreamReader reader = new StreamReader(context.Request.InputStream, Encoding.UTF8);
                 receiveInfo = reader.ReadToEnd();
             }
-            else if(request.HttpMethod == "GET")
+            else if (request.HttpMethod == "GET")
             {
-                receiveInfo = request.RawUrl.Remove(0,1);
+                receiveInfo = request.RawUrl.Remove(0, 1);
             }
 
             var response = context.Response;
@@ -48,7 +49,7 @@ namespace IDG
             response.ContentType = "application/json;charset=UTF-8";
             response.ContentEncoding = Encoding.UTF8;
             response.AppendHeader("Content-Type", "application/json;charset=UTF-8");
-            
+
             using (StreamWriter writer = new StreamWriter(response.OutputStream, Encoding.UTF8))
             {
                 if (InfoParse != null)

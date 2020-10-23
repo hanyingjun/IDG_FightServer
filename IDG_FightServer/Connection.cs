@@ -4,9 +4,12 @@ namespace IDG
 {
     public class Connection
     {
+        /// <summary>
+        /// 客户端连接Id
+        /// </summary>
+        public int clientId;
         protected static readonly int ActiveNum = 30;
         public readonly static int buffer_size = 1024;
-        public int clientId;
         public byte[] readBuff = new byte[buffer_size];
         public byte[] lenBytes = new byte[4];
         public Socket socket;

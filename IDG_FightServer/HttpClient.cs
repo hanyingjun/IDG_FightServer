@@ -1,9 +1,7 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Text;
-using System.Net;
+﻿using System;
 using System.IO;
-using System;
+using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace IDG
